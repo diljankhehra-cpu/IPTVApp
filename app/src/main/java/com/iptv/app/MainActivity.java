@@ -20,7 +20,7 @@ public class MainActivity extends AppCompatActivity {
     ChannelAdapter adapter;
     ArrayList<Channel> channels = new ArrayList<>();
 
-    String playlistUrl = "https://iptv-org.github.io/iptv/countries/in.m3u";
+    String playlistUrl = "https://iptv-org.github.io/iptv/index.m3u";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,24 +34,19 @@ public class MainActivity extends AppCompatActivity {
         adapter = new ChannelAdapter(channels, this);
         recyclerView.setAdapter(adapter);
 
-        // 🔍 Search logic
+        // 🔍 search
         searchBar.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
                 adapter.filter(s.toString());
             }
-
-            @Override
-            public void afterTextChanged(Editable s) {}
+            @Override public void afterTextChanged(Editable s) {}
         });
 
-        loadM3U();
+        loadPlaylist();
     }
 
-    void loadM3U() {
+    void loadPlaylist() {
         new Thread(() -> {
             try {
                 BufferedReader br = new BufferedReader(
