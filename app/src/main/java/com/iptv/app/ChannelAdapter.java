@@ -5,34 +5,38 @@ import android.content.Intent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
 import androidx.recyclerview.widget.RecyclerView;
+
 import java.util.ArrayList;
 
 public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHolder> {
 
     ArrayList<Channel> list;
+    ArrayList<Channel> fullList;
     Context context;
 
     public ChannelAdapter(ArrayList<Channel> list, Context context) {
         this.list = list;
+        this.fullList = new ArrayList<>(list);
         this.context = context;
     }
 
-    // ✅ ViewHolder FIX
-    public static class ViewHolder extends RecyclerView.ViewHolder {
+    public class ViewHolder extends RecyclerView.ViewHolder {
         TextView textView;
 
-        public ViewHolder(TextView itemView) {
+        public ViewHolder(View itemView) {
             super(itemView);
-            textView = itemView;
+            textView = (TextView) itemView;
         }
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        TextView tv = new TextView(parent.getContext());
+        TextView tv = new TextView(context);
         tv.setPadding(20, 20, 20, 20);
         tv.setTextSize(18);
+        tv.setTextColor(0xFFFFFFFF);
         return new ViewHolder(tv);
     }
 
@@ -41,7 +45,6 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
         Channel ch = list.get(position);
         holder.textView.setText(ch.name);
 
-        // ✅ FIX: itemView properly use
         holder.itemView.setOnClickListener(v -> {
             Intent i = new Intent(context, PlayerActivity.class);
             i.putExtra("url", ch.url);
@@ -52,5 +55,22 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
     @Override
     public int getItemCount() {
         return list.size();
+    }
+
+    // 🔍 FILTER METHOD
+    public void filter(String text) {
+        list.clear();
+
+        if (text.isEmpty()) {
+            list.addAll(fullList);
+        } else {
+            text = text.toLowerCase();
+            for (Channel ch : fullList) {
+                if (ch.name.toLowerCase().contains(text)) {
+                    list.add(ch);
+                }
+            }
+        }
+        notifyDataSetChanged();
     }
 }

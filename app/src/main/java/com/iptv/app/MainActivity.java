@@ -1,12 +1,18 @@
 package com.iptv.app;
 
-import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.widget.EditText;
+
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.*;
-import java.io.*;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -19,12 +25,28 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        recyclerView = new RecyclerView(this);
-        setContentView(recyclerView);
+        setContentView(R.layout.activity_main);
+
+        recyclerView = findViewById(R.id.recyclerView);
+        EditText searchBar = findViewById(R.id.searchBar);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         adapter = new ChannelAdapter(channels, this);
         recyclerView.setAdapter(adapter);
+
+        // 🔍 Search logic
+        searchBar.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                adapter.filter(s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
 
         loadM3U();
     }
@@ -33,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
         new Thread(() -> {
             try {
                 BufferedReader br = new BufferedReader(
-                    new InputStreamReader(new URL(playlistUrl).openStream())
+                        new InputStreamReader(new URL(playlistUrl).openStream())
                 );
 
                 String line;
@@ -49,7 +71,10 @@ public class MainActivity extends AppCompatActivity {
 
                 br.close();
 
-                runOnUiThread(() -> adapter.notifyDataSetChanged());
+                runOnUiThread(() -> {
+                    adapter.fullList = new ArrayList<>(channels);
+                    adapter.notifyDataSetChanged();
+                });
 
             } catch (Exception e) {
                 e.printStackTrace();
