@@ -1,101 +1,147 @@
 package com.iptv.app;
 
+import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.VideoView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.URL;
+
 public class PlayerActivity extends AppCompatActivity {
 
-    VideoView videoView;
+    SurfaceView surfaceView;
+    MediaPlayer mediaPlayer;
     ProgressBar loading;
     TextView statusText;
+
+    // 🔥 PLAYLIST URL
+    String playlistUrl = "https://iptv-org.github.io/iptv/index.m3u";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 📦 Layout
-        videoView = new VideoView(this);
+        surfaceView = new SurfaceView(this);
         loading = new ProgressBar(this);
         statusText = new TextView(this);
-
-        loading.setIndeterminate(true);
 
         statusText.setTextColor(0xFFFFFFFF);
         statusText.setGravity(Gravity.CENTER);
         statusText.setTextSize(16);
 
         FrameLayout layout = new FrameLayout(this);
+        layout.addView(surfaceView);
 
-        layout.addView(videoView);
-
-        FrameLayout.LayoutParams progressParams = new FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams p1 = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT
         );
-        progressParams.gravity = Gravity.CENTER;
+        p1.gravity = Gravity.CENTER;
+        layout.addView(loading, p1);
 
-        layout.addView(loading, progressParams);
-
-        FrameLayout.LayoutParams textParams = new FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams p2 = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT
         );
-        textParams.gravity = Gravity.CENTER;
-
-        layout.addView(statusText, textParams);
+        p2.gravity = Gravity.CENTER;
+        layout.addView(statusText, p2);
 
         setContentView(layout);
 
-        String url = getIntent().getStringExtra("url");
+        SurfaceHolder holder = surfaceView.getHolder();
 
-        playVideo(url);
+        holder.addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(SurfaceHolder holder) {
+                loadPlaylistAndPlay(holder);
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {}
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder holder) {
+                if (mediaPlayer != null) {
+                    mediaPlayer.release();
+                }
+            }
+        });
     }
 
-    private void playVideo(String url) {
+    // 🔥 Playlist load karke first stream play karega
+    private void loadPlaylistAndPlay(SurfaceHolder holder) {
+        new Thread(() -> {
+            try {
+                runOnUiThread(() -> {
+                    loading.setVisibility(ProgressBar.VISIBLE);
+                    statusText.setText("Loading playlist...");
+                });
 
-        loading.setVisibility(ProgressBar.VISIBLE);
-        statusText.setText("Buffering...");
+                BufferedReader br = new BufferedReader(
+                        new InputStreamReader(new URL(playlistUrl).openStream())
+                );
 
-        videoView.setVideoURI(Uri.parse(url));
+                String line;
+                String streamUrl = null;
 
-        videoView.setOnPreparedListener(mp -> {
-            loading.setVisibility(ProgressBar.GONE);
-            statusText.setText("");
-            videoView.start();
-        });
+                while ((line = br.readLine()) != null) {
+                    if (line.startsWith("http")) {
+                        streamUrl = line;
+                        break;
+                    }
+                }
 
-        videoView.setOnErrorListener((mp, what, extra) -> {
-            loading.setVisibility(ProgressBar.GONE);
+                br.close();
 
-            String errorMsg = "Playback Error";
+                if (streamUrl == null) {
+                    runOnUiThread(() -> statusText.setText("No stream found"));
+                    return;
+                }
 
-            if (what == MediaPlayer.MEDIA_ERROR_SERVER_DIED) {
-                errorMsg = "Server Error (500)";
-            } else if (what == MediaPlayer.MEDIA_ERROR_UNKNOWN) {
-                errorMsg = "Stream Error (404 / 503)";
+                String finalStreamUrl = streamUrl;
+
+                runOnUiThread(() -> playStream(holder, finalStreamUrl));
+
+            } catch (Exception e) {
+                runOnUiThread(() -> statusText.setText("Playlist Error"));
             }
+        }).start();
+    }
 
-            statusText.setText(errorMsg);
-            return true;
-        });
+    private void playStream(SurfaceHolder holder, String url) {
+        try {
+            statusText.setText("Buffering...");
 
-        videoView.setOnInfoListener((mp, what, extra) -> {
-            if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) {
-                loading.setVisibility(ProgressBar.VISIBLE);
-                statusText.setText("Buffering...");
-            } else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END) {
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setDataSource(url);
+            mediaPlayer.setDisplay(holder);
+            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+
+            mediaPlayer.setOnPreparedListener(mp -> {
                 loading.setVisibility(ProgressBar.GONE);
                 statusText.setText("");
-            }
-            return false;
-        });
+                mediaPlayer.start();
+            });
+
+            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                loading.setVisibility(ProgressBar.GONE);
+                statusText.setText("Stream Error (404 / 503)");
+                return true;
+            });
+
+            mediaPlayer.prepareAsync();
+
+        } catch (Exception e) {
+            statusText.setText("Invalid Stream");
+        }
     }
 }
