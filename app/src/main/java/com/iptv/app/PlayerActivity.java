@@ -4,6 +4,7 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.VideoView;
@@ -20,7 +21,7 @@ public class PlayerActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 📦 Layout programmatically
+        // 📦 Layout
         videoView = new VideoView(this);
         loading = new ProgressBar(this);
         statusText = new TextView(this);
@@ -31,8 +32,7 @@ public class PlayerActivity extends AppCompatActivity {
         statusText.setGravity(Gravity.CENTER);
         statusText.setTextSize(16);
 
-        // FrameLayout bana ke sab add kar
-        android.widget.FrameLayout layout = new android.widget.FrameLayout(this);
+        FrameLayout layout = new FrameLayout(this);
 
         layout.addView(videoView);
 
